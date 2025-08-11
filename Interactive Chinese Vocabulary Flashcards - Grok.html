@@ -1,0 +1,215 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chinese Flashcards</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .flip-card {
+      perspective: 1000px;
+    }
+    .flip-card-inner {
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .flip-card.flipped .flip-card-inner {
+      transform: rotateY(180deg);
+    }
+    .flip-card-front, .flip-card-back {
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .flip-card-back {
+      transform: rotateY(180deg);
+    }
+  </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
+  <h1 class="text-3xl font-bold mb-6">Chinese Flashcards</h1>
+  <div id="flashcard-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+  <div class="mt-6 flex space-x-4">
+    <button id="prev-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Previous</button>
+    <button id="next-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Next</button>
+  </div>
+
+  <script>
+    const flashcards = [
+      { simplified: '爱', traditional: '愛', pinyin: 'ài', meaning: 'to love; affection; to be fond of; to like', hsk: 'HSK 1', trace: '爱 爱 爱 爱 爱', color: 'bg-red-200' },
+      { simplified: '爸爸', traditional: '爸爸', pinyin: 'bà ba', meaning: 'father (informal); CL:个[gè],位[wèi]', hsk: 'HSK 1', trace: '爸爸 爸爸 爸爸 爸爸 爸爸', color: 'bg-red-200' },
+      { simplified: '不客气', traditional: '不客氣', pinyin: 'bú kè qi', meaning: "you're welcome; it's my pleasure", hsk: 'HSK 1', trace: '不客气 不客气 不客气 不客气 不客气', color: 'bg-red-200' },
+      { simplified: '电脑', traditional: '電腦', pinyin: 'diàn nǎo', meaning: 'computer', hsk: 'HSK 1', trace: '电脑 电脑 电脑 电脑 电脑', color: 'bg-red-200' },
+      { simplified: '读', traditional: '讀', pinyin: 'dú', meaning: 'to read; to study', hsk: 'HSK 1', trace: '读 读 读 读 读', color: 'bg-red-200' },
+      { simplified: '高兴', traditional: '高興', pinyin: 'gāo xìng', meaning: 'happy; glad', hsk: 'HSK 1', trace: '高兴 高兴 高兴 高兴 高兴', color: 'bg-red-200' },
+      { simplified: '没关系', traditional: '沒關係', pinyin: 'méi guān xi', meaning: "it doesn't matter", hsk: 'HSK 1', trace: '没关系 没关系 没关系 没关系 没关系', color: 'bg-red-200' },
+      { simplified: '苹果', traditional: '蘋果', pinyin: 'píng guǒ', meaning: 'apple', hsk: 'HSK 1', trace: '苹果 苹果 苹果 苹果 苹果', color: 'bg-red-200' },
+      { simplified: '钱', traditional: '錢', pinyin: 'qián', meaning: 'money', hsk: 'HSK 1', trace: '钱 钱 钱 钱 钱', color: 'bg-red-200' },
+      { simplified: '热', traditional: '熱', pinyin: 'rè', meaning: 'hot', hsk: 'HSK 1', trace: '热 热 热 热 热', color: 'bg-red-200' },
+      { simplified: '谁', traditional: '誰', pinyin: 'shéi', meaning: 'who', hsk: 'HSK 1', trace: '谁 谁 谁 谁 谁', color: 'bg-red-200' },
+      { simplified: '什么', traditional: '什麼', pinyin: 'shén me', meaning: 'what', hsk: 'HSK 1', trace: '什么 什么 什么 什么 什么', color: 'bg-red-200' },
+      { simplified: '十', traditional: '十', pinyin: 'shí', meaning: 'ten; 10', hsk: 'HSK 1', trace: '十 十 十 十 十', color: 'bg-red-200' },
+      { simplified: '时候', traditional: '時候', pinyin: 'shí hou', meaning: 'time; when', hsk: 'HSK 1', trace: '时候 时候 时候 时候 时候', color: 'bg-red-200' },
+      { simplified: '睡觉', traditional: '睡覺', pinyin: 'shuì jiào', meaning: 'to sleep', hsk: 'HSK 1', trace: '睡觉 睡觉 睡觉 睡觉 睡觉', color: 'bg-red-200' },
+      { simplified: '说', traditional: '說', pinyin: 'shuō', meaning: 'to speak', hsk: 'HSK 1', trace: '说 说 说 说 说', color: 'bg-red-200' },
+      { simplified: '岁', traditional: '歲', pinyin: 'suì', meaning: 'year (of age)', hsk: 'HSK 1', trace: '岁 岁 岁 岁 岁', color: 'bg-red-200' },
+      { simplified: '听', traditional: '聽', pinyin: 'tīng', meaning: 'to listen', hsk: 'HSK 1', trace: '听 听 听 听 听', color: 'bg-red-200' },
+      { simplified: '喂', traditional: '喂', pinyin: 'wèi', meaning: 'to feed', hsk: 'HSK 1', trace: '喂 喂 喂 喂 喂', color: 'bg-red-200' },
+      { simplified: '问题', traditional: '問題', pinyin: 'wèn tí', meaning: 'question; problem', hsk: 'HSK 1', trace: '问题 问题 问题 问题 问题', color: 'bg-red-200' },
+      { simplified: '喜欢', traditional: '喜歡', pinyin: 'xǐ huan', meaning: 'to like', hsk: 'HSK 1', trace: '喜欢 喜欢 喜欢 喜欢 喜欢', color: 'bg-red-200' },
+      { simplified: '医生', traditional: '醫生', pinyin: 'yī shēng', meaning: 'doctor', hsk: 'HSK 1', trace: '医生 医生 医生 医生 医生', color: 'bg-red-200' },
+      { simplified: '医院', traditional: '醫院', pinyin: 'yī yuàn', meaning: 'hospital', hsk: 'HSK 1', trace: '医院 医院 医院 医院 医院', color: 'bg-red-200' },
+      { simplified: '谢谢', traditional: '謝謝', pinyin: 'xiè xie', meaning: 'thank you', hsk: 'HSK 1', trace: '谢谢 谢谢 谢谢 谢谢 谢谢', color: 'bg-red-200' },
+      { simplified: '帮助', traditional: '幫助', pinyin: 'bāng zhù', meaning: 'assistance; to help', hsk: 'HSK 2', trace: '帮助 帮助 帮助 帮助 帮助', color: 'bg-yellow-200' },
+      { simplified: '懂', traditional: '懂', pinyin: 'dǒng', meaning: 'to understand', hsk: 'HSK 2', trace: '懂 懂 懂 懂 懂', color: 'bg-yellow-200' },
+      { simplified: '矮', traditional: '矮', pinyin: 'ǎi', meaning: 'low; short', hsk: 'HSK 3', trace: '矮 矮 矮 矮 矮', color: 'bg-green-200' },
+      { simplified: '爱好', traditional: '愛好', pinyin: 'ài hào', meaning: 'hobby', hsk: 'HSK 3', trace: '爱好 爱好 爱好 爱好 爱好', color: 'bg-green-200' },
+      { simplified: '安静', traditional: '安靜', pinyin: 'ān jìng', meaning: 'quiet', hsk: 'HSK 3', trace: '安静 安静 安静 安静 安静', color: 'bg-green-200' },
+      { simplified: '搬', traditional: '搬', pinyin: 'bān', meaning: 'to move', hsk: 'HSK 3', trace: '搬 搬 搬 搬 搬', color: 'bg-green-200' },
+      { simplified: '班', traditional: '班', pinyin: 'bān', meaning: 'class', hsk: 'HSK 3', trace: '班 班 班 班 班', color: 'bg-green-200' },
+      { simplified: '办法', traditional: '辦法', pinyin: 'bàn fǎ', meaning: 'means', hsk: 'HSK 3', trace: '办法 办法 办法 办法 办法', color: 'bg-green-200' },
+      { simplified: '帮忙', traditional: '幫忙', pinyin: 'bāng máng', meaning: 'to help', hsk: 'HSK 3', trace: '帮忙 帮忙 帮忙 帮忙 帮忙', color: 'bg-green-200' },
+      { simplified: '包', traditional: '包', pinyin: 'bāo', meaning: 'to wrap', hsk: 'HSK 3', trace: '包 包 包 包 包', color: 'bg-green-200' },
+      { simplified: '饱', traditional: '飽', pinyin: 'bǎo', meaning: 'satisfied', hsk: 'HSK 3', trace: '饱 饱 饱 饱 饱', color: 'bg-green-200' },
+      { simplified: '被', traditional: '被', pinyin: 'bèi', meaning: 'by (passive)', hsk: 'HSK 3', trace: '被 被 被 被 被', color: 'bg-green-200' },
+      { simplified: '鼻子', traditional: '鼻子', pinyin: 'bí zi', meaning: 'nose', hsk: 'HSK 3', trace: '鼻子 鼻子 鼻子 鼻子 鼻子', color: 'bg-green-200' },
+      { simplified: '比较', traditional: '比較', pinyin: 'bǐ jiào', meaning: 'compare', hsk: 'HSK 3', trace: '比较 比较 比较 比较 比较', color: 'bg-green-200' },
+      { simplified: '比赛', traditional: '比賽', pinyin: 'bǐ sài', meaning: 'competition', hsk: 'HSK 3', trace: '比赛 比赛 比赛 比赛 比赛', color: 'bg-green-200' },
+      { simplified: '参加', traditional: '參加', pinyin: 'cān jiā', meaning: 'to participate', hsk: 'HSK 3', trace: '参加 参加 参加 参加 参加', color: 'bg-green-200' },
+      { simplified: '草', traditional: '草', pinyin: 'cǎo', meaning: 'grass', hsk: 'HSK 3', trace: '草 草 草 草 草', color: 'bg-green-200' },
+      { simplified: '层', traditional: '層', pinyin: 'céng', meaning: 'layer', hsk: 'HSK 3', trace: '层 层 层 层 层', color: 'bg-green-200' },
+      { simplified: '差', traditional: '差', pinyin: 'chà', meaning: 'to differ; poor', hsk: 'HSK 3', trace: '差 差 差 差 差', color: 'bg-green-200' },
+      { simplified: '超市', traditional: '超市', pinyin: 'chāo shì', meaning: 'supermarket', hsk: 'HSK 3', trace: '超市 超市 超市 超市 超市', color: 'bg-green-200' },
+      { simplified: '衬衫', traditional: '襯衫', pinyin: 'chèn shān', meaning: 'shirt', hsk: 'HSK 3', trace: '衬衫 衬衫 衬衫 衬衫 衬衫', color: 'bg-green-200' },
+      { simplified: '城市', traditional: '城市', pinyin: 'chéng shì', meaning: 'city', hsk: 'HSK 3', trace: '城市 城市 城市 城市 城市', color: 'bg-green-200' },
+      { simplified: '成绩', traditional: '成績', pinyin: 'chéng jì', meaning: 'achievement', hsk: 'HSK 3', trace: '成绩 成绩 成绩 成绩 成绩', color: 'bg-green-200' },
+      { simplified: '迟到', traditional: '遲到', pinyin: 'chí dào', meaning: 'to arrive late', hsk: 'HSK 3', trace: '迟到 迟到 迟到 迟到 迟到', color: 'bg-green-200' },
+      { simplified: '除了', traditional: '除了', pinyin: 'chú le', meaning: 'besides', hsk: 'HSK 3', trace: '除了 除了 除了 除了 除了', color: 'bg-green-200' },
+      { simplified: '船', traditional: '船', pinyin: 'chuán', meaning: 'boat', hsk: 'HSK 3', trace: '船 船 船 船 船', color: 'bg-green-200' },
+      { simplified: '春', traditional: '春', pinyin: 'chūn', meaning: 'spring', hsk: 'HSK 3', trace: '春 春 春 春 春', color: 'bg-green-200' },
+      { simplified: '词典', traditional: '詞典', pinyin: 'cí diǎn', meaning: 'dictionary', hsk: 'HSK 3', trace: '词典 词典 词典 词典 词典', color: 'bg-green-200' },
+      { simplified: '爱情', traditional: '愛情', pinyin: 'ài qíng', meaning: 'romance', hsk: 'HSK 4', trace: '爱情 爱情 爱情 爱情 爱情', color: 'bg-blue-200' },
+      { simplified: '安排', traditional: '安排', pinyin: 'ān pái', meaning: 'to arrange', hsk: 'HSK 4', trace: '安排 安排 安排 安排 安排', color: 'bg-blue-200' },
+      { simplified: '安全', traditional: '安全', pinyin: 'ān quán', meaning: 'safe', hsk: 'HSK 4', trace: '安全 安全 安全 安全 安全', color: 'bg-blue-200' },
+      { simplified: '按时', traditional: '按時', pinyin: 'àn shí', meaning: 'on time', hsk: 'HSK 4', trace: '按时 按时 按时 按时 按时', color: 'bg-blue-200' },
+      { simplified: '按照', traditional: '按照', pinyin: 'àn zhào', meaning: 'according to', hsk: 'HSK 4', trace: '按照 按照 按照 按照 按照', color: 'bg-blue-200' },
+      { simplified: '百分之', traditional: '百分之', pinyin: 'bǎi fēn zhī', meaning: 'percent', hsk: 'HSK 4', trace: '百分之 百分之 百分之 百分之 百分之', color: 'bg-blue-200' },
+      { simplified: '棒', traditional: '棒', pinyin: 'bàng', meaning: 'stick; smart', hsk: 'HSK 4', trace: '棒 棒 棒 棒 棒', color: 'bg-blue-200' },
+      { simplified: '包子', traditional: '包子', pinyin: 'bāo zi', meaning: 'steamed stuffed bun', hsk: 'HSK 4', trace: '包子 包子 包子 包子 包子', color: 'bg-blue-200' },
+      { simplified: '保护', traditional: '保護', pinyin: 'bǎo hù', meaning: 'to protect', hsk: 'HSK 4', trace: '保护 保护 保护 保护 保护', color: 'bg-blue-200' },
+      { simplified: '保证', traditional: '保證', pinyin: 'bǎo zhèng', meaning: 'guarantee', hsk: 'HSK 4', trace: '保证 保证 保证 保证 保证', color: 'bg-blue-200' },
+      { simplified: '报名', traditional: '報名', pinyin: 'bào míng', meaning: 'to sign up', hsk: 'HSK 4', trace: '报名 报名 报名 报名 报名', color: 'bg-blue-200' },
+      { simplified: '抱', traditional: '抱', pinyin: 'bào', meaning: 'to hold', hsk: 'HSK 4', trace: '抱 抱 抱 抱 抱', color: 'bg-blue-200' },
+      { simplified: '抱歉', traditional: '抱歉', pinyin: 'bào qiàn', meaning: 'sorry', hsk: 'HSK 4', trace: '抱歉 抱歉 抱歉 抱歉 抱歉', color: 'bg-blue-200' },
+      { simplified: '倍', traditional: '倍', pinyin: 'bèi', meaning: '-fold; times', hsk: 'HSK 4', trace: '倍 倍 倍 倍 倍', color: 'bg-blue-200' },
+      { simplified: '本来', traditional: '本來', pinyin: 'běn lái', meaning: 'originally', hsk: 'HSK 4', trace: '本来 本来 本来 本来 本来', color: 'bg-blue-200' },
+      { simplified: '笨', traditional: '笨', pinyin: 'bèn', meaning: 'stupid', hsk: 'HSK 4', trace: '笨 笨 笨 笨 笨', color: 'bg-blue-200' },
+      { simplified: '比如', traditional: '比如', pinyin: 'bǐ rú', meaning: 'for example', hsk: 'HSK 4', trace: '比如 比如 比如 比如 比如', color: 'bg-blue-200' },
+      { simplified: '毕业', traditional: '畢業', pinyin: 'bì yè', meaning: 'to graduate', hsk: 'HSK 4', trace: '毕业 毕业 毕业 毕业 毕业', color: 'bg-blue-200' },
+      { simplified: '遍', traditional: '遍', pinyin: 'biàn', meaning: 'a time; everywhere', hsk: 'HSK 4', trace: '遍 遍 遍 遍 遍', color: 'bg-blue-200' },
+      { simplified: '标准', traditional: '標準', pinyin: 'biāo zhǔn', meaning: 'standard', hsk: 'HSK 4', trace: '标准 标准 标准 标准 标准', color: 'bg-blue-200' },
+      { simplified: '表格', traditional: '表格', pinyin: 'biǎo gé', meaning: 'form', hsk: 'HSK 4', trace: '表格 表格 表格 表格 表格', color: 'bg-blue-200' },
+      { simplified: '表示', traditional: '表示', pinyin: 'biǎo shì', meaning: 'to express', hsk: 'HSK 4', trace: '表示 表示 表示 表示 表示', color: 'bg-blue-200' },
+      { simplified: '表演', traditional: '表演', pinyin: 'biǎo yǎn', meaning: 'performance', hsk: 'HSK 4', trace: '表演 表演 表演 表演 表演', color: 'bg-blue-200' },
+      { simplified: '表扬', traditional: '表揚', pinyin: 'biǎo yáng', meaning: 'to praise', hsk: 'HSK 4', trace: '表扬 表扬 表扬 表扬 表扬', color: 'bg-blue-200' },
+      { simplified: '饼干', traditional: '餅乾', pinyin: 'bǐng gān', meaning: 'biscuit', hsk: 'HSK 4', trace: '饼干 饼干 饼干 饼干 饼干', color: 'bg-blue-200' },
+      { simplified: '并且', traditional: '並且', pinyin: 'bìng qiě', meaning: 'moreover', hsk: 'HSK 4', trace: '并且 并且 并且 并且 并且', color: 'bg-blue-200' },
+      { simplified: '博士', traditional: '博士', pinyin: 'bó shì', meaning: 'doctor; Ph.D.', hsk: 'HSK 4', trace: '博士 博士 博士 博士 博士', color: 'bg-blue-200' },
+      { simplified: '不过', traditional: '不過', pinyin: 'bú guò', meaning: 'only; but', hsk: 'HSK 4', trace: '不过 不过 不过 不过 不过', color: 'bg-blue-200' },
+      { simplified: '不得不', traditional: '不得不', pinyin: 'bù dé bù', meaning: 'have no choice but to', hsk: 'HSK 4', trace: '不得不 不得不 不得不 不得不 不得不', color: 'bg-blue-200' },
+      { simplified: '不管', traditional: '不管', pinyin: 'bù guǎn', meaning: 'no matter', hsk: 'HSK 4', trace: '不管 不管 不管 不管 不管', color: 'bg-blue-200' },
+      { simplified: '不仅', traditional: '不僅', pinyin: 'bù jǐn', meaning: 'not only', hsk: 'HSK 4', trace: '不仅 不仅 不仅 不仅 不仅', color: 'bg-blue-200' },
+      { simplified: '部分', traditional: '部分', pinyin: 'bù fen', meaning: 'part', hsk: 'HSK 4', trace: '部分 部分 部分 部分 部分', color: 'bg-blue-200' },
+      { simplified: '擦', traditional: '擦', pinyin: 'cā', meaning: 'to wipe', hsk: 'HSK 4', trace: '擦 擦 擦 擦 擦', color: 'bg-blue-200' },
+      { simplified: '猜', traditional: '猜', pinyin: 'cāi', meaning: 'to guess', hsk: 'HSK 4', trace: '猜 猜 猜 猜 猜', color: 'bg-blue-200' },
+      { simplified: '材料', traditional: '材料', pinyin: 'cái liào', meaning: 'material', hsk: 'HSK 4', trace: '材料 材料 材料 材料 材料', color: 'bg-blue-200' },
+      { simplified: '参观', traditional: '參觀', pinyin: 'cān guān', meaning: 'to visit', hsk: 'HSK 4', trace: '参观 参观 参观 参观 参观', color: 'bg-blue-200' },
+      { simplified: '餐厅', traditional: '餐廳', pinyin: 'cān tīng', meaning: 'dining-hall', hsk: 'HSK 4', trace: '餐厅 餐厅 餐厅 餐厅 餐厅', color: 'bg-blue-200' },
+      { simplified: '厕所', traditional: '廁所', pinyin: 'cè suǒ', meaning: 'toilet', hsk: 'HSK 4', trace: '厕所 厕所 厕所 厕所 厕所', color: 'bg-blue-200' }
+    ];
+
+    let currentIndex = 0;
+
+    function renderFlashcards() {
+      const container = document.getElementById('flashcard-container');
+      container.innerHTML = '';
+      const card = flashcards[currentIndex];
+      const cardElement = document.createElement('div');
+      cardElement.className = 'flip-card w-64 h-96';
+      cardElement.innerHTML = `
+        <div class="flip-card-inner relative w-full h-full">
+          <div class="flip-card-front absolute w-full h-full ${card.color} rounded-lg shadow-lg flex items-center justify-center">
+            <p class="text-6xl font-bold">${card.simplified}</p>
+          </div>
+          <div class="flip-card-back absolute w-full h-full bg-white rounded-lg shadow-lg p-4 flex flex-col justify-between">
+            <div>
+              <p class="text-xl font-bold">Simplified: ${card.simplified}</p>
+              <p class="text-lg">Traditional: ${card.traditional}</p>
+              <p class="text-lg">Pinyin: ${card.pinyin}</p>
+              <p class="text-lg">Meaning: ${card.meaning}</p>
+              <p class="text-lg">HSK: ${card.hsk}</p>
+            </div>
+            <div>
+              <p class="text-sm">Trace Grid: ${card.trace}</p>
+            </div>
+          </div>
+        </div>
+      `;
+      container.appendChild(cardElement);
+      cardElement.addEventListener('click', () => {
+        cardElement.classList.toggle('flipped');
+      });
+    }
+
+    document.getElementById('prev-btn').addEventListener('click', () => {
+      currentIndex = (currentIndex - 1 + flashcards.length) % flashcards.length;
+      renderFlashcards();
+    });
+
+    document.getElementById('next-btn').addEventListener('click', () => {
+      currentIndex = (currentIndex + 1) % flashcards.length;
+      renderFlashcards();
+    });
+
+    renderFlashcards();
+  </script>
+</body>
+</html>
